@@ -21,8 +21,8 @@
                 <p class="text-slate-400">Sistem Monitoring Pengeringan Rumput Laut Cerdas</p>
             </div>
             <div class="flex items-center gap-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
-                <div class="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="text-sm font-medium">Status: Online </span>
+                <div id="status-indicator" class="h-3 w-3 bg-gray-500 rounded-full animate-pulse"></div>
+                <span id="status" class="text-sm font-medium">Menghubungkan...</span>
             </div>
         </header>
 
@@ -62,39 +62,52 @@
                 </div>
                 <h3 class="text-slate-400 text-sm mb-1">Penyusutan Total</h3>
                 <p class="text-5xl font-bold text-white"><span id="penyusutan">--</span> <span class="text-2xl font-normal text-slate-300">%</span></p>
-                <p class="text-xs text-slate-500 mt-3 font-medium">Berdasarkan kalkulasi selisih berat awal dan aktual</p>
             </div>
         </div>
     </div>
 
-    <script>
-        // Simulasi Data untuk UI Mockup
-        function perbaruiDashboard() {
-            // Simulasi nilai yang akan datang dari ESP32 / Firebase
-            const data = {
-                suhuRuangan: 45.5,
-                kelembapanRuangan: 30.2,
-                beratAktual: 1.8,
-                
-                // Variabel untuk perhitungan penyusutan
-                beratAwal: 10.0 // Contoh berat awal rumput laut
-            };
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-            // Menghitung Penyusutan Total secara dinamis di Frontend
-            // Rumus: ((Berat Awal - Berat Aktual) / Berat Awal) * 100
-            let penyusutanTotal = ((data.beratAwal - data.beratAktual) / data.beratAwal) * 100;
+        const firebaseConfig = {
+            apiKey: "AIzaSyC988dbntEmlzXP8Yudb3oxFRhlc32XSv0",
+            authDomain: "seapod-dryer-1a7df.firebaseapp.com",
+            databaseURL: "https://seapod-dryer-1a7df-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "seapod-dryer-1a7df",
+            storageBucket: "seapod-dryer-1a7df.firebasestorage.app",
+            messagingSenderId: "389898916015",
+            appId: "1:389898916015:web:f1c4af3a6e7a1d71e5045a"
+        };
 
-            // Menampilkan data ke elemen HTML
-            document.getElementById('suhu').innerText = data.suhuRuangan.toFixed(1);
-            document.getElementById('kelembapan').innerText = data.kelembapanRuangan.toFixed(1);
-            document.getElementById('berat').innerText = data.beratAktual.toFixed(2);
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const dryerRef = ref(db, 'SEAPOD Dryer');
+
+        onValue(dryerRef, (snapshot) => {
+            const data = snapshot.val();
             
-            // Menampilkan penyusutan dengan 1 angka di belakang koma
-            document.getElementById('penyusutan').innerText = penyusutanTotal.toFixed(1);
-        }
+            if (data) {
+                document.getElementById('suhu').innerText = data.Suhu !== undefined ? data.Suhu.toFixed(1) : "--";
+                document.getElementById('kelembapan').innerText = data.Kelembapan !== undefined ? data.Kelembapan.toFixed(1) : "--";
+                document.getElementById('berat').innerText = data.Berat !== undefined ? data.Berat.toFixed(3) : "--";
+                document.getElementById('penyusutan').innerText = data.Penyusutan !== undefined ? data.Penyusutan.toFixed(1) : "--";
+                
+                const statusText = data.Status !== undefined ? data.Status : "Online";
+                document.getElementById('status').innerText = "Status: " + statusText;
 
-        // Jalankan fungsi saat halaman dimuat
-        window.onload = perbaruiDashboard;
+                const indicator = document.getElementById('status-indicator');
+                if (statusText === "Standby") {
+                    indicator.className = "h-3 w-3 bg-yellow-500 rounded-full animate-pulse";
+                } else if (statusText === "Proses Pengeringan") {
+                    indicator.className = "h-3 w-3 bg-green-500 rounded-full animate-pulse";
+                } else if (statusText === "Pengeringan Selesai") {
+                    indicator.className = "h-3 w-3 bg-blue-500 rounded-full";
+                } else {
+                    indicator.className = "h-3 w-3 bg-gray-500 rounded-full";
+                }
+            }
+        });
     </script>
 </body>
 </html>
