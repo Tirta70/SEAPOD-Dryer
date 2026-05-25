@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEAPOD | Dashboard Pengering Rumput Laut</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-5px); border-color: #38bdf8; box-shadow: 0 10px 30px -10px rgba(56, 189, 248, 0.3); }
+        .stat-icon { background: linear-gradient(45deg, #0ea5e9, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">SEAPOD <span class="text-sky-400">Dryer</span></h1>
+                <p class="text-slate-400">Sistem Monitoring Pengeringan Rumput Laut Cerdas</p>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
+                <div id="status-indicator" class="h-3 w-3 bg-gray-500 rounded-full animate-pulse"></div>
+                <span id="status" class="text-sm font-medium">Menghubungkan...</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-temperature-half text-3xl stat-icon"></i>
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Sensor</span>
+                </div>
+                <h3 class="text-slate-400 text-sm mb-1">Suhu Ruangan</h3>
+                <p class="text-5xl font-bold text-white"><span id="suhu">--</span> <span class="text-2xl font-normal text-slate-300">°C</span></p>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-droplet text-3xl stat-icon"></i>
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Sensor</span>
+                </div>
+                <h3 class="text-slate-400 text-sm mb-1">Kelembapan Ruangan</h3>
+                <p class="text-5xl font-bold text-white"><span id="kelembapan">--</span> <span class="text-2xl font-normal text-slate-300">%</span></p>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-weight-hanging text-3xl stat-icon"></i>
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Load Cell</span>
+                </div>
+                <h3 class="text-slate-400 text-sm mb-1">Berat Aktual</h3>
+                <p class="text-5xl font-bold text-white"><span id="berat">--</span> <span class="text-2xl font-normal text-slate-300">Kg</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
+            <div class="glass-card p-8 border-l-4 border-l-cyan-400">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-chart-pie text-4xl stat-icon"></i>
+                </div>
+                <h3 class="text-slate-400 text-sm mb-1">Penyusutan Total</h3>
+                <p class="text-5xl font-bold text-white"><span id="penyusutan">--</span> <span class="text-2xl font-normal text-slate-300">%</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC988dbntEmlzXP8Yudb3oxFRhlc32XSv0",
+            authDomain: "seapod-dryer-1a7df.firebaseapp.com",
+            databaseURL: "https://seapod-dryer-1a7df-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "seapod-dryer-1a7df",
+            storageBucket: "seapod-dryer-1a7df.firebasestorage.app",
+            messagingSenderId: "389898916015",
+            appId: "1:389898916015:web:f1c4af3a6e7a1d71e5045a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const dryerRef = ref(db, 'SEAPOD Dryer');
+
+        onValue(dryerRef, (snapshot) => {
+            const data = snapshot.val();
+            
+            if (data) {
+                document.getElementById('suhu').innerText = data.Suhu !== undefined ? data.Suhu.toFixed(1) : "--";
+                document.getElementById('kelembapan').innerText = data.Kelembapan !== undefined ? data.Kelembapan.toFixed(1) : "--";
+                document.getElementById('berat').innerText = data.Berat !== undefined ? data.Berat.toFixed(3) : "--";
+                document.getElementById('penyusutan').innerText = data.Penyusutan !== undefined ? data.Penyusutan.toFixed(1) : "--";
+                
+                const statusText = data.Status !== undefined ? data.Status : "Online";
+                document.getElementById('status').innerText = "Status: " + statusText;
+
+                const indicator = document.getElementById('status-indicator');
+                if (statusText === "Standby") {
+                    indicator.className = "h-3 w-3 bg-yellow-500 rounded-full animate-pulse";
+                } else if (statusText === "Proses Pengeringan") {
+                    indicator.className = "h-3 w-3 bg-green-500 rounded-full animate-pulse";
+                } else if (statusText === "Pengeringan Selesai") {
+                    indicator.className = "h-3 w-3 bg-blue-500 rounded-full";
+                } else {
+                    indicator.className = "h-3 w-3 bg-gray-500 rounded-full";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
