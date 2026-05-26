@@ -6,7 +6,6 @@
     <title>SEAPOD | Dashboard Pengering Rumput Laut</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -58,13 +57,25 @@
             </div>
         </div>
 
-        <div class="glass-card p-6 mb-6">
-            <div class="flex justify-between items-start mb-4">
-                <i class="fa-solid fa-chart-line text-2xl stat-icon"></i>
-                <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Grafik Pemantauan Real-Time</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-cloud-sun text-2xl stat-icon"></i>
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Grafik SHT31</span>
+                </div>
+                <div class="w-full relative h-56">
+                    <canvas id="grafikLingkungan"></canvas>
+                </div>
             </div>
-            <div class="w-full relative h-64 md:h-80">
-                <canvas id="grafikSensor"></canvas>
+
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <i class="fa-solid fa-weight-scale text-2xl stat-icon"></i>
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Grafik Load Cell</span>
+                </div>
+                <div class="w-full relative h-56">
+                    <canvas id="grafikBerat"></canvas>
+                </div>
             </div>
         </div>
 
@@ -97,30 +108,27 @@
         const db = getDatabase(app);
         const dryerRef = ref(db, 'SEAPOD Dryer');
 
-        // --- KONFIGURASI GRAFIK CHART.JS ---
-        Chart.defaults.color = '#94a3b8'; // Menyesuaikan warna teks legenda & sumbu dengan tema gelap
-        const ctx = document.getElementById('grafikSensor').getContext('2d');
-        const myChart = new Chart(ctx, {
+        Chart.defaults.color = '#94a3b8'; 
+        
+        // --- INISIALISASI GRAFIK 1: LINGKUNGAN ---
+        const ctxLingkungan = document.getElementById('grafikLingkungan').getContext('2d');
+        const chartLingkungan = new Chart(ctxLingkungan, {
             type: 'line',
-            data: {
-                labels: [], 
-                datasets: [
-                    { label: 'Suhu (°C)', borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', data: [], tension: 0.4, borderWidth: 2 },
-                    { label: 'Kelembapan (%)', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], tension: 0.4, borderWidth: 2 },
-                    { label: 'Berat (Kg)', borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', data: [], tension: 0.4, borderWidth: 2 }
-                ]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                scales: { 
-                    x: { display: false }, // Disembunyikan karena pergerakan data sangat cepat (tiap 2 detik)
-                    y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
-                },
-                plugins: {
-                    legend: { position: 'top' }
-                }
-            }
+            data: { labels: [], datasets: [
+                { label: 'Suhu (°C)', borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', data: [], tension: 0.4, borderWidth: 2 },
+                { label: 'Kelembapan (%)', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], tension: 0.4, borderWidth: 2 }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } } }, plugins: { legend: { position: 'top' } } }
+        });
+
+        // --- INISIALISASI GRAFIK 2: BERAT ---
+        const ctxBerat = document.getElementById('grafikBerat').getContext('2d');
+        const chartBerat = new Chart(ctxBerat, {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'Berat Aktual (Kg)', borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', data: [], tension: 0.4, borderWidth: 2 }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: 'rgba(255, 255, 255, 0.1)' } } }, plugins: { legend: { position: 'top' } } }
         });
 
         // --- LISTENER FIREBASE ---
@@ -128,44 +136,41 @@
             const data = snapshot.val();
             
             if (data) {
-                // 1. Update Teks Angka
+                // Update Angka
                 document.getElementById('suhu').innerText = data.Suhu !== undefined ? data.Suhu.toFixed(1) : "--";
                 document.getElementById('kelembapan').innerText = data.Kelembapan !== undefined ? data.Kelembapan.toFixed(1) : "--";
                 document.getElementById('berat').innerText = data.Berat !== undefined ? data.Berat.toFixed(3) : "--";
                 document.getElementById('penyusutan').innerText = data.Penyusutan !== undefined ? data.Penyusutan.toFixed(1) : "--";
                 
-                // 2. Update Teks & Warna Status
+                // Update Status
                 const statusText = data.Status !== undefined ? data.Status : "Online";
                 document.getElementById('status').innerText = "Status: " + statusText;
-
                 const indicator = document.getElementById('status-indicator');
-                if (statusText === "Standby") {
-                    indicator.className = "h-3 w-3 bg-yellow-500 rounded-full animate-pulse";
-                } else if (statusText === "Proses Pengeringan") {
-                    indicator.className = "h-3 w-3 bg-green-500 rounded-full animate-pulse";
-                } else if (statusText === "Pengeringan Selesai") {
-                    indicator.className = "h-3 w-3 bg-blue-500 rounded-full";
-                } else {
-                    indicator.className = "h-3 w-3 bg-gray-500 rounded-full";
-                }
+                if (statusText === "Standby") indicator.className = "h-3 w-3 bg-yellow-500 rounded-full animate-pulse";
+                else if (statusText === "Proses Pengeringan") indicator.className = "h-3 w-3 bg-green-500 rounded-full animate-pulse";
+                else if (statusText === "Pengeringan Selesai") indicator.className = "h-3 w-3 bg-blue-500 rounded-full";
+                else indicator.className = "h-3 w-3 bg-gray-500 rounded-full";
 
-                // 3. Update Titik Grafik
+                // Update Kedua Grafik
                 const waktuSekarang = new Date().toLocaleTimeString('id-ID');
-                myChart.data.labels.push(waktuSekarang);
                 
-                // Masukkan data baru ke grafik
-                myChart.data.datasets[0].data.push(data.Suhu);
-                myChart.data.datasets[1].data.push(data.Kelembapan);
-                myChart.data.datasets[2].data.push(data.Berat);
+                chartLingkungan.data.labels.push(waktuSekarang);
+                chartLingkungan.data.datasets[0].data.push(data.Suhu);
+                chartLingkungan.data.datasets[1].data.push(data.Kelembapan);
+                
+                chartBerat.data.labels.push(waktuSekarang);
+                chartBerat.data.datasets[0].data.push(data.Berat);
 
-                // Batasi array maksimal 60 titik (sekitar 2 menit data) agar web tidak berat dan grafik tidak terlalu padat
-                if (myChart.data.labels.length > 60) {
-                    myChart.data.labels.shift(); // Hapus data paling awal (kiri)
-                    myChart.data.datasets.forEach(dataset => dataset.data.shift());
+                if (chartLingkungan.data.labels.length > 60) {
+                    chartLingkungan.data.labels.shift();
+                    chartLingkungan.data.datasets.forEach(dataset => dataset.data.shift());
+                    
+                    chartBerat.data.labels.shift();
+                    chartBerat.data.datasets.forEach(dataset => dataset.data.shift());
                 }
                 
-                // Render ulang grafik dengan data terbaru
-                myChart.update();
+                chartLingkungan.update();
+                chartBerat.update();
             }
         });
     </script>
