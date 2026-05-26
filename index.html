@@ -106,7 +106,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const dryerRef = ref(db, 'SEAPOD Dryer');
+        
+        // PENTING: Path di sini sudah disesuaikan agar sama persis dengan yang ada di ESP32 (menggunakan underscore)
+        const dryerRef = ref(db, 'SEAPOD_Dryer');
 
         Chart.defaults.color = '#94a3b8'; 
         
